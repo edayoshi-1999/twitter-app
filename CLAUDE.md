@@ -56,6 +56,35 @@
 - **コンテナ**: Docker（Laravel Sail 推奨）
 - **バージョン管理**: Git
 
+### コード品質ツール
+
+#### フロントエンド（React）
+- **Biome**: 高速な統合リンター＆フォーマッター（ESLint + Prettier の代替）
+  - TypeScript/JavaScript のリンティング
+  - コードフォーマット
+  - インポートの自動整理
+- **TypeScript**: 静的型チェック
+
+#### バックエンド（Laravel）
+- **Laravel Pint**: Laravel 公式のコードスタイルフィクサー
+  - PSR-12 準拠
+  - Laravel スタイル
+  - 自動フォーマット
+- **PHPStan / Larastan**: 静的解析ツール（オプション）
+
+#### Git Hooks
+- **Husky**: Git hooks を簡単に管理
+- **lint-staged**: ステージングファイルのみにリンター実行
+- **Commitlint**: コミットメッセージの規約チェック（オプション）
+
+#### CI/CD
+- **GitHub Actions**: 自動テスト・デプロイ
+- **自動化される処理**:
+  - コード品質チェック（リンター・フォーマッター）
+  - テスト実行（Unit/Feature/Integration）
+  - セキュリティスキャン
+  - ビルド確認
+
 ---
 
 ## 🎓 開発原則（最重要）
@@ -1316,6 +1345,625 @@ foreach ($users as $user) {
 
 ---
 
+## 🛠️ コード品質ツールのセットアップ
+
+### フロントエンド: Biome のセットアップ
+
+#### 1. Biome のインストール
+
+```bash
+cd frontend
+npm install --save-dev --save-exact @biomejs/biome
+```
+
+#### 2. Biome の初期化
+
+```bash
+npx @biomejs/biome init
+```
+
+#### 3. `biome.json` の設定
+
+```json
+{
+  "$schema": "https://biomejs.dev/schemas/1.4.1/schema.json",
+  "organizeImports": {
+    "enabled": true
+  },
+  "linter": {
+    "enabled": true,
+    "rules": {
+      "recommended": true,
+      "complexity": {
+        "noExtraBooleanCast": "error",
+        "noMultipleSpacesInRegularExpressionLiterals": "error",
+        "noUselessCatch": "error",
+        "noWith": "error"
+      },
+      "correctness": {
+        "noConstAssign": "error",
+        "noConstantCondition": "error",
+        "noEmptyCharacterClassInRegex": "error",
+        "noEmptyPattern": "error",
+        "noGlobalObjectCalls": "error",
+        "noInvalidConstructorSuper": "error",
+        "noInvalidNewBuiltin": "error",
+        "noNonoctalDecimalEscape": "error",
+        "noPrecisionLoss": "error",
+        "noSelfAssign": "error",
+        "noSetterReturn": "error",
+        "noSwitchDeclarations": "error",
+        "noUndeclaredVariables": "error",
+        "noUnreachable": "error",
+        "noUnreachableSuper": "error",
+        "noUnsafeFinally": "error",
+        "noUnsafeOptionalChaining": "error",
+        "noUnusedLabels": "error",
+        "noUnusedVariables": "error",
+        "useIsNan": "error",
+        "useValidForDirection": "error",
+        "useYield": "error"
+      },
+      "style": {
+        "noNamespace": "error",
+        "useAsConstAssertion": "error"
+      },
+      "suspicious": {
+        "noAsyncPromiseExecutor": "error",
+        "noCatchAssign": "error",
+        "noClassAssign": "error",
+        "noCompareNegZero": "error",
+        "noControlCharactersInRegex": "error",
+        "noDebugger": "error",
+        "noDuplicateCase": "error",
+        "noDuplicateClassMembers": "error",
+        "noDuplicateObjectKeys": "error",
+        "noDuplicateParameters": "error",
+        "noEmptyBlockStatements": "error",
+        "noExplicitAny": "warn",
+        "noExtraNonNullAssertion": "error",
+        "noFallthroughSwitchClause": "error",
+        "noFunctionAssign": "error",
+        "noGlobalAssign": "error",
+        "noImportAssign": "error",
+        "noMisleadingCharacterClass": "error",
+        "noMisleadingInstantiator": "error",
+        "noPrototypeBuiltins": "error",
+        "noRedeclare": "error",
+        "noShadowRestrictedNames": "error",
+        "noUnsafeDeclarationMerging": "error",
+        "noUnsafeNegation": "error",
+        "useGetterReturn": "error",
+        "useValidTypeof": "error"
+      }
+    }
+  },
+  "formatter": {
+    "enabled": true,
+    "formatWithErrors": false,
+    "indentStyle": "space",
+    "indentWidth": 2,
+    "lineEnding": "lf",
+    "lineWidth": 100,
+    "attributePosition": "auto"
+  },
+  "javascript": {
+    "formatter": {
+      "jsxQuoteStyle": "double",
+      "quoteProperties": "asNeeded",
+      "trailingComma": "es5",
+      "semicolons": "always",
+      "arrowParentheses": "always",
+      "bracketSpacing": true,
+      "bracketSameLine": false,
+      "quoteStyle": "single",
+      "attributePosition": "auto"
+    }
+  },
+  "overrides": [
+    {
+      "include": ["*.ts", "*.tsx", "*.mts", "*.cts"],
+      "linter": {
+        "rules": {
+          "correctness": {
+            "noConstAssign": "off",
+            "noGlobalObjectCalls": "off",
+            "noInvalidConstructorSuper": "off",
+            "noInvalidNewBuiltin": "off",
+            "noNewSymbol": "off",
+            "noSetterReturn": "off",
+            "noUndeclaredVariables": "off",
+            "noUnreachable": "off",
+            "noUnreachableSuper": "off"
+          },
+          "style": {
+            "noArguments": "error",
+            "noVar": "error",
+            "useConst": "error"
+          },
+          "suspicious": {
+            "noDuplicateClassMembers": "off",
+            "noDuplicateObjectKeys": "off",
+            "noDuplicateParameters": "off",
+            "noFunctionAssign": "off",
+            "noImportAssign": "off",
+            "noRedeclare": "off",
+            "noUnsafeNegation": "off",
+            "useGetterReturn": "off"
+          }
+        }
+      }
+    }
+  ]
+}
+```
+
+#### 4. `package.json` にスクリプト追加
+
+```json
+{
+  "scripts": {
+    "lint": "biome lint ./src",
+    "lint:fix": "biome lint --apply ./src",
+    "format": "biome format ./src",
+    "format:fix": "biome format --write ./src",
+    "check": "biome check ./src",
+    "check:fix": "biome check --apply ./src"
+  }
+}
+```
+
+#### 5. VS Code の設定（`.vscode/settings.json`）
+
+```json
+{
+  "editor.defaultFormatter": "biomejs.biome",
+  "editor.formatOnSave": true,
+  "editor.codeActionsOnSave": {
+    "quickfix.biome": "explicit",
+    "source.organizeImports.biome": "explicit"
+  },
+  "[javascript]": {
+    "editor.defaultFormatter": "biomejs.biome"
+  },
+  "[typescript]": {
+    "editor.defaultFormatter": "biomejs.biome"
+  },
+  "[javascriptreact]": {
+    "editor.defaultFormatter": "biomejs.biome"
+  },
+  "[typescriptreact]": {
+    "editor.defaultFormatter": "biomejs.biome"
+  }
+}
+```
+
+### バックエンド: Laravel Pint のセットアップ
+
+#### 1. Laravel Pint のインストール（Laravel 11 には標準で含まれる）
+
+```bash
+cd backend
+composer require laravel/pint --dev
+```
+
+#### 2. `pint.json` の設定
+
+```json
+{
+  "preset": "laravel",
+  "rules": {
+    "simplified_null_return": true,
+    "braces": false,
+    "new_with_braces": {
+      "anonymous_class": false,
+      "named_class": false
+    },
+    "method_argument_space": {
+      "on_multiline": "ensure_fully_multiline"
+    }
+  }
+}
+```
+
+#### 3. `composer.json` にスクリプト追加
+
+```json
+{
+  "scripts": {
+    "lint": "pint --test -v",
+    "lint:fix": "pint -v",
+    "test": "pest",
+    "test:coverage": "pest --coverage"
+  }
+}
+```
+
+### Git Hooks のセットアップ（Husky + lint-staged）
+
+#### 1. Husky と lint-staged のインストール（フロントエンド側）
+
+```bash
+cd frontend
+npm install --save-dev husky lint-staged
+npx husky init
+```
+
+#### 2. `.husky/pre-commit` の設定
+
+```bash
+#!/usr/bin/env sh
+. "$(dirname -- "$0")/_/husky.sh"
+
+# フロントエンドのlint-staged実行
+cd frontend && npx lint-staged
+
+# バックエンドのLaravel Pint実行
+cd ../backend && composer lint:fix
+git add -A
+```
+
+#### 3. `package.json` に lint-staged の設定
+
+```json
+{
+  "lint-staged": {
+    "*.{js,jsx,ts,tsx}": [
+      "biome check --apply --no-errors-on-unmatched"
+    ]
+  }
+}
+```
+
+#### 4. コミットメッセージの規約（オプション）
+
+Commitlint を使用する場合：
+
+```bash
+npm install --save-dev @commitlint/{config-conventional,cli}
+echo "module.exports = {extends: ['@commitlint/config-conventional']}" > commitlint.config.js
+npx husky add .husky/commit-msg 'npx --no -- commitlint --edit ${1}'
+```
+
+**コミットメッセージの形式**:
+```
+<type>(<scope>): <subject>
+
+<body>
+
+<footer>
+```
+
+**type の例**:
+- `feat`: 新機能
+- `fix`: バグ修正
+- `docs`: ドキュメントのみの変更
+- `style`: コードの意味に影響しない変更（空白、フォーマット等）
+- `refactor`: リファクタリング
+- `test`: テストの追加・修正
+- `chore`: ビルドプロセスやツールの変更
+
+---
+
+## 🚀 CI/CD のセットアップ（GitHub Actions）
+
+### ディレクトリ構成
+
+```
+.github/
+└── workflows/
+    ├── frontend-ci.yml      # フロントエンドのCI
+    ├── backend-ci.yml       # バックエンドのCI
+    └── deploy.yml           # デプロイ（オプション）
+```
+
+### フロントエンド CI: `.github/workflows/frontend-ci.yml`
+
+```yaml
+name: Frontend CI
+
+on:
+  push:
+    branches: [main, develop]
+    paths:
+      - 'frontend/**'
+      - '.github/workflows/frontend-ci.yml'
+  pull_request:
+    branches: [main, develop]
+    paths:
+      - 'frontend/**'
+      - '.github/workflows/frontend-ci.yml'
+
+defaults:
+  run:
+    working-directory: frontend
+
+jobs:
+  lint-and-test:
+    runs-on: ubuntu-latest
+
+    strategy:
+      matrix:
+        node-version: [20.x]
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js ${{ matrix.node-version }}
+        uses: actions/setup-node@v4
+        with:
+          node-version: ${{ matrix.node-version }}
+          cache: 'npm'
+          cache-dependency-path: frontend/package-lock.json
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Run Biome lint
+        run: npm run lint
+
+      - name: Run Biome format check
+        run: npm run format
+
+      - name: Type check
+        run: npx tsc --noEmit
+
+      - name: Run tests
+        run: npm test -- --run
+
+      - name: Build
+        run: npm run build
+
+      - name: Upload build artifacts
+        if: success()
+        uses: actions/upload-artifact@v4
+        with:
+          name: frontend-build
+          path: frontend/dist
+          retention-days: 7
+
+  security-scan:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Run npm audit
+        run: npm audit --audit-level=moderate
+        continue-on-error: true
+
+      - name: Run Snyk security scan
+        uses: snyk/actions/node@master
+        continue-on-error: true
+        env:
+          SNYK_TOKEN: ${{ secrets.SNYK_TOKEN }}
+        with:
+          args: --severity-threshold=high
+```
+
+### バックエンド CI: `.github/workflows/backend-ci.yml`
+
+```yaml
+name: Backend CI
+
+on:
+  push:
+    branches: [main, develop]
+    paths:
+      - 'backend/**'
+      - '.github/workflows/backend-ci.yml'
+  pull_request:
+    branches: [main, develop]
+    paths:
+      - 'backend/**'
+      - '.github/workflows/backend-ci.yml'
+
+defaults:
+  run:
+    working-directory: backend
+
+jobs:
+  lint-and-test:
+    runs-on: ubuntu-latest
+
+    services:
+      mysql:
+        image: mysql:8.0
+        env:
+          MYSQL_ROOT_PASSWORD: password
+          MYSQL_DATABASE: testing
+        ports:
+          - 3306:3306
+        options: >-
+          --health-cmd="mysqladmin ping"
+          --health-interval=10s
+          --health-timeout=5s
+          --health-retries=3
+
+    strategy:
+      matrix:
+        php-version: [8.2, 8.3]
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Setup PHP ${{ matrix.php-version }}
+        uses: shivammathur/setup-php@v2
+        with:
+          php-version: ${{ matrix.php-version }}
+          extensions: mbstring, dom, fileinfo, mysql, redis
+          coverage: xdebug
+
+      - name: Get Composer cache directory
+        id: composer-cache
+        run: echo "dir=$(composer config cache-files-dir)" >> $GITHUB_OUTPUT
+
+      - name: Cache Composer dependencies
+        uses: actions/cache@v4
+        with:
+          path: ${{ steps.composer-cache.outputs.dir }}
+          key: ${{ runner.os }}-composer-${{ hashFiles('**/composer.lock') }}
+          restore-keys: ${{ runner.os }}-composer-
+
+      - name: Install dependencies
+        run: composer install --prefer-dist --no-progress --no-interaction
+
+      - name: Copy .env
+        run: cp .env.example .env
+
+      - name: Generate application key
+        run: php artisan key:generate
+
+      - name: Run Laravel Pint (linter)
+        run: composer lint
+
+      - name: Run PHPStan (static analysis)
+        run: ./vendor/bin/phpstan analyse --memory-limit=2G
+        continue-on-error: true
+
+      - name: Run database migrations
+        run: php artisan migrate --force
+        env:
+          DB_CONNECTION: mysql
+          DB_HOST: 127.0.0.1
+          DB_PORT: 3306
+          DB_DATABASE: testing
+          DB_USERNAME: root
+          DB_PASSWORD: password
+
+      - name: Run tests (Pest)
+        run: composer test
+        env:
+          DB_CONNECTION: mysql
+          DB_HOST: 127.0.0.1
+          DB_PORT: 3306
+          DB_DATABASE: testing
+          DB_USERNAME: root
+          DB_PASSWORD: password
+
+      - name: Run tests with coverage
+        run: composer test:coverage
+        env:
+          DB_CONNECTION: mysql
+          DB_HOST: 127.0.0.1
+          DB_PORT: 3306
+          DB_DATABASE: testing
+          DB_USERNAME: root
+          DB_PASSWORD: password
+
+      - name: Upload coverage reports to Codecov
+        uses: codecov/codecov-action@v4
+        with:
+          file: ./backend/coverage.xml
+          flags: backend
+          name: backend-coverage
+        env:
+          CODECOV_TOKEN: ${{ secrets.CODECOV_TOKEN }}
+
+  security-scan:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Setup PHP
+        uses: shivammathur/setup-php@v2
+        with:
+          php-version: 8.2
+
+      - name: Install dependencies
+        run: composer install --prefer-dist --no-progress
+
+      - name: Run security audit
+        run: composer audit
+```
+
+### CI/CD のベストプラクティス
+
+#### 1. ブランチ戦略
+
+```
+main (本番)
+  ↑
+develop (開発)
+  ↑
+feature/* (機能開発)
+  ↑
+```
+
+- `feature/*` → `develop`: プルリクエスト時に CI 実行
+- `develop` → `main`: マージ前に全テスト実行
+- `main`: デプロイ前の最終確認
+
+#### 2. テストの分類と実行タイミング
+
+| テスト種別 | 実行タイミング | 目的 |
+|-----------|--------------|------|
+| リンター・フォーマッター | コミット時（pre-commit） | コードスタイルの統一 |
+| ユニットテスト | プッシュ時（CI） | 個別ロジックの確認 |
+| 統合テスト | プルリクエスト時（CI） | コンポーネント間の連携確認 |
+| E2Eテスト | マージ前（CI） | ユーザーフロー全体の確認 |
+| セキュリティスキャン | 定期実行（nightly） | 脆弱性の早期発見 |
+
+#### 3. パフォーマンス最適化
+
+- **キャッシュ活用**: `node_modules`, `vendor`, Composer cache
+- **並列実行**: 複数の PHP バージョンでテスト
+- **条件付き実行**: 変更のあったディレクトリのみ CI 実行
+
+#### 4. 通知設定
+
+**Slack 通知の例**:
+
+```yaml
+- name: Notify Slack on failure
+  if: failure()
+  uses: 8398a7/action-slack@v3
+  with:
+    status: ${{ job.status }}
+    text: 'CI failed on ${{ github.ref }}'
+    webhook_url: ${{ secrets.SLACK_WEBHOOK }}
+```
+
+### ローカルでの CI/CD シミュレーション
+
+#### Act を使用してローカルで GitHub Actions をテスト
+
+```bash
+# Act のインストール（macOS）
+brew install act
+
+# ワークフローの実行
+act -j lint-and-test
+
+# 特定のイベントをシミュレート
+act pull_request
+```
+
+---
+
+## 📊 コード品質メトリクス
+
+### 監視すべき指標
+
+1. **テストカバレッジ**: 80% 以上を目標
+2. **コード重複率**: 5% 以下
+3. **循環的複雑度**: 関数あたり 10 以下
+4. **技術的負債**: SonarQube スコア A 評価
+5. **ビルド時間**: 5分以内
+
+### ツールの統合
+
+- **Codecov**: テストカバレッジの可視化
+- **SonarQube/SonarCloud**: コード品質の総合分析
+- **Dependabot**: 依存パッケージの自動更新
+
+---
+
 ## 📚 参考リソース
 
 ### Laravel
@@ -1414,9 +2062,19 @@ foreach ($users as $user) {
 ---
 
 **最終更新日**: 2025-11-16
-**バージョン**: 2.0.0
+**バージョン**: 3.0.0
 
 **変更履歴**:
+- v3.0.0 (2025-11-16): コード品質ツールとCI/CDの内容を追加
+  - Biome（フロントエンド）のセットアップ手順と設定
+  - Laravel Pint（バックエンド）のセットアップ手順
+  - Git Hooks（Husky + lint-staged）の導入方法
+  - GitHub Actions を使った CI/CD の完全なワークフロー例
+  - フロントエンド CI（リンター、テスト、ビルド、セキュリティスキャン）
+  - バックエンド CI（リンター、静的解析、テスト、カバレッジ）
+  - ブランチ戦略とテスト実行タイミングの表
+  - コード品質メトリクスの監視指標
+  - Commitlint によるコミットメッセージ規約
 - v2.0.0 (2025-11-16): DDD（ドメイン駆動設計）の内容を追加
   - DDDの本質と核心的な価値を解説
   - TDD + DDD の相乗効果を説明
