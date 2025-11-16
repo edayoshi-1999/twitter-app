@@ -4,9 +4,11 @@
 
 **プロジェクト名**: Twitter クローンアプリケーション
 
-**目的**: TDD（テスト駆動開発）、保守性、ベストプラクティスを重視した、実践的なフルスタックアプリケーションの開発を通じた学習
+**目的**: TDD（テスト駆動開発）、DDD（ドメイン駆動設計）、保守性、ベストプラクティスを重視した、実践的なフルスタックアプリケーションの開発を通じた学習
 
 **重要**: このプロジェクトでは、AIアシスタント（Claude）を「シニアアーキテクト兼ペアプログラマー」として活用し、**一度にすべてをやらせるのではなく、明確な役割と制約を与え、ステップバイステップで開発を進めます**。
+
+**設計哲学**: TDD で「正しく動くこと」を保証しながら、DDD で「ビジネスロジックの本質」を表現します。
 
 ---
 
@@ -112,35 +114,219 @@
 - **TypeScript の活用**: 型安全性を最大限に活用
 - **パフォーマンス**: 不要な再レンダリングの回避
 
+### 4. DDD（ドメイン駆動設計）の採用
+
+**DDDの本質**: ソフトウェアの中心に「ビジネスドメインの知識」を置き、技術的関心事から分離する
+
+#### DDDの核心的な価値
+
+1. **ユビキタス言語（Ubiquitous Language）**
+   - 開発者とドメインエキスパートが同じ言葉を使う
+   - コードがビジネス用語をそのまま反映
+   - 例: 「ツイート」「フォロー」「タイムライン」という言葉をコード内でもそのまま使用
+
+2. **ドメインモデルの重要性**
+   - ビジネスルールはドメイン層に集約
+   - データベーススキーマに引きずられない設計
+   - 技術的制約ではなく、ビジネス要件から設計を始める
+
+3. **境界づけられたコンテキスト（Bounded Context）**
+   - ドメインを適切な単位で分割
+   - 各コンテキスト内で一貫したモデルを持つ
+   - 例: 「認証コンテキスト」「ツイートコンテキスト」「タイムラインコンテキスト」
+
+#### TDD + DDD の相乗効果
+
+```
+TDD: 「正しく動くこと」を保証
+DDD: 「何が正しいか」を明確にする
+
+TDD だけ → 技術的には正しいが、ビジネス価値が不明瞭
+DDD だけ → 設計は美しいが、動作保証がない
+TDD + DDD → ビジネス価値のある、動作保証されたソフトウェア
+```
+
+#### DDDの戦術的パターン
+
+**エンティティ（Entity）**
+- 一意の識別子を持つオブジェクト
+- ライフサイクル全体を通じて追跡される
+- 例: `User`, `Tweet`
+
+**値オブジェクト（Value Object）**
+- 属性の値によって識別される不変オブジェクト
+- 識別子を持たない
+- 例: `TweetBody`, `EmailAddress`, `Username`
+
+**集約（Aggregate）**
+- 関連するオブジェクトの集まり
+- 集約ルート（Aggregate Root）を通じてのみアクセス
+- トランザクション境界を定義
+- 例: `Tweet` 集約（Tweet本体 + Likes + Replies）
+
+**リポジトリ（Repository）**
+- ドメインオブジェクトの永続化を抽象化
+- コレクションのようなインターフェース
+- インフラ層の詳細を隠蔽
+
+**ドメインサービス（Domain Service）**
+- エンティティや値オブジェクトに属さないビジネスロジック
+- ドメインの概念を表す操作
+- 例: `FollowService`, `TimelineGenerator`
+
+**ドメインイベント（Domain Event）**
+- ドメイン内で発生した重要な出来事
+- 疎結合なコンポーネント間通信
+- 例: `TweetPosted`, `UserFollowed`
+
+#### 実装の指針
+
+**レイヤードアーキテクチャ**
+
+```
+┌─────────────────────────────────┐
+│  Presentation Layer             │  ← Controllers, Resources
+│  (ユーザーインターフェース)      │
+├─────────────────────────────────┤
+│  Application Layer              │  ← Use Cases, Application Services
+│  (ユースケースの調整)           │
+├─────────────────────────────────┤
+│  Domain Layer                   │  ← Entities, Value Objects, Domain Services
+│  (ビジネスロジックの中核)       │     Repository Interfaces
+├─────────────────────────────────┤
+│  Infrastructure Layer           │  ← Eloquent Models, Repository Implementations
+│  (技術的詳細)                   │     External Services
+└─────────────────────────────────┘
+```
+
+**依存性の方向**
+- 上位層は下位層に依存できる
+- **ドメイン層は何にも依存しない**（最も重要）
+- インフラ層はドメイン層のインターフェースを実装
+
+**Laravel での実装戦略**
+
+1. **Eloquent Models ≠ Domain Entities**
+   - Eloquent Model は永続化の詳細（Infrastructure）
+   - Domain Entity はビジネスロジックの中心
+   - 分離することで、ドメインロジックをテストしやすくする
+
+2. **段階的な適用**
+   - 最初は簡易的なDDD（Service + Repository パターン）
+   - 複雑性が増すにつれて、Entity/Value Object を分離
+   - プロジェクトの規模に応じて適用度を調整
+
 ---
 
 ## 📁 プロジェクト構成
 
-### Laravel プロジェクト構成（`backend/`）
+### Laravel プロジェクト構成（`backend/`）- DDD 対応
 
 ```
 backend/
 ├── app/
-│   ├── Http/
-│   │   ├── Controllers/        # コントローラー（薄く保つ）
-│   │   ├── Requests/           # FormRequest（バリデーション）
-│   │   └── Resources/          # API リソース（JSON変換）
-│   ├── Models/                 # Eloquent モデル
-│   ├── Services/               # ビジネスロジック
-│   ├── Repositories/           # データアクセス層（必要に応じて）
-│   └── Exceptions/             # カスタム例外
+│   ├── Http/                           # Presentation Layer
+│   │   ├── Controllers/                # コントローラー（薄く保つ）
+│   │   ├── Requests/                   # FormRequest（入力バリデーション）
+│   │   └── Resources/                  # API リソース（JSON 変換）
+│   │
+│   ├── Application/                    # Application Layer
+│   │   ├── UseCases/                   # ユースケース（アプリケーションサービス）
+│   │   │   ├── Tweet/
+│   │   │   │   ├── CreateTweetUseCase.php
+│   │   │   │   ├── DeleteTweetUseCase.php
+│   │   │   │   └── GetTimelineUseCase.php
+│   │   │   └── User/
+│   │   │       ├── RegisterUserUseCase.php
+│   │   │       └── FollowUserUseCase.php
+│   │   └── DTOs/                       # データ転送オブジェクト
+│   │       ├── CreateTweetData.php
+│   │       └── RegisterUserData.php
+│   │
+│   ├── Domain/                         # Domain Layer（最重要）
+│   │   ├── Tweet/                      # Tweetコンテキスト
+│   │   │   ├── Entities/
+│   │   │   │   └── Tweet.php           # Tweetエンティティ
+│   │   │   ├── ValueObjects/
+│   │   │   │   ├── TweetBody.php       # ツイート本文（Value Object）
+│   │   │   │   └── TweetId.php
+│   │   │   ├── Repositories/           # リポジトリインターフェース
+│   │   │   │   └── TweetRepositoryInterface.php
+│   │   │   ├── Services/               # ドメインサービス
+│   │   │   │   └── TweetValidationService.php
+│   │   │   └── Events/                 # ドメインイベント
+│   │   │       ├── TweetPosted.php
+│   │   │       └── TweetDeleted.php
+│   │   │
+│   │   ├── User/                       # Userコンテキスト
+│   │   │   ├── Entities/
+│   │   │   │   └── User.php
+│   │   │   ├── ValueObjects/
+│   │   │   │   ├── EmailAddress.php
+│   │   │   │   ├── Username.php
+│   │   │   │   └── Password.php
+│   │   │   ├── Repositories/
+│   │   │   │   └── UserRepositoryInterface.php
+│   │   │   └── Services/
+│   │   │       └── FollowService.php
+│   │   │
+│   │   └── Shared/                     # 共有ドメイン
+│   │       ├── ValueObjects/
+│   │       │   └── UserId.php
+│   │       └── Exceptions/
+│   │           ├── DomainException.php
+│   │           └── ValidationException.php
+│   │
+│   └── Infrastructure/                 # Infrastructure Layer
+│       ├── Eloquent/                   # Eloquent Models（永続化の詳細）
+│       │   ├── TweetModel.php          # Eloquent Tweet Model
+│       │   └── UserModel.php           # Eloquent User Model
+│       ├── Repositories/               # リポジトリ実装
+│       │   ├── EloquentTweetRepository.php
+│       │   └── EloquentUserRepository.php
+│       └── Services/                   # 外部サービス連携
+│           └── ImageStorageService.php
+│
 ├── database/
-│   ├── migrations/             # マイグレーション
-│   ├── factories/              # モデルファクトリー
-│   └── seeders/                # シーダー
+│   ├── migrations/                     # マイグレーション
+│   ├── factories/                      # モデルファクトリー
+│   └── seeders/                        # シーダー
+│
 ├── tests/
-│   ├── Feature/                # フィーチャーテスト（API統合テスト）
-│   └── Unit/                   # ユニットテスト
+│   ├── Feature/                        # フィーチャーテスト（API統合テスト）
+│   │   ├── Tweet/
+│   │   └── User/
+│   ├── Unit/                           # ユニットテスト
+│   │   ├── Domain/                     # ドメインロジックのテスト
+│   │   │   ├── Tweet/
+│   │   │   └── User/
+│   │   └── Application/                # ユースケースのテスト
+│   └── Integration/                    # インテグレーションテスト
+│       └── Repositories/
+│
 ├── routes/
-│   └── api.php                 # API ルート定義
+│   └── api.php                         # API ルート定義
+│
 └── config/
-    └── cors.php                # CORS 設定
+    └── cors.php                        # CORS 設定
 ```
+
+### DDD ディレクトリ構成のポイント
+
+**Domain Layer（ドメイン層）**
+- ビジネスロジックの中心
+- フレームワークに依存しない Pure PHP
+- テストが容易（DBや外部サービス不要）
+
+**Application Layer（アプリケーション層）**
+- ユースケースを調整
+- ドメインオブジェクトを組み合わせて処理を実現
+- トランザクション管理
+
+**Infrastructure Layer（インフラ層）**
+- Eloquent Model はここに配置
+- Domain の Repository Interface を実装
+- 外部サービスとの連携
 
 ### React プロジェクト構成（`frontend/`）
 
@@ -391,6 +577,451 @@ TDD（テストファースト）で以下の機能を実装する手順とコ�
 4. **ベストプラクティスを要求する**
    - 「Laravel のコミュニティで推奨される方法で実装して」
    - 「セキュリティ上の問題がないか確認して」
+
+---
+
+## 🏗️ DDD 実装パターンと具体例
+
+### Value Object の実装例
+
+```php
+// app/Domain/Tweet/ValueObjects/TweetBody.php
+namespace App\Domain\Tweet\ValueObjects;
+
+use App\Domain\Shared\Exceptions\ValidationException;
+
+final class TweetBody
+{
+    private const MAX_LENGTH = 280;
+    private const MIN_LENGTH = 1;
+
+    private string $value;
+
+    private function __construct(string $value)
+    {
+        $this->validate($value);
+        $this->value = $value;
+    }
+
+    public static function create(string $value): self
+    {
+        return new self($value);
+    }
+
+    private function validate(string $value): void
+    {
+        $length = mb_strlen($value);
+
+        if ($length < self::MIN_LENGTH) {
+            throw new ValidationException('ツイート本文は空にできません');
+        }
+
+        if ($length > self::MAX_LENGTH) {
+            throw new ValidationException(
+                sprintf('ツイート本文は%d文字以内である必要があります', self::MAX_LENGTH)
+            );
+        }
+    }
+
+    public function value(): string
+    {
+        return $this->value;
+    }
+
+    public function equals(TweetBody $other): bool
+    {
+        return $this->value === $other->value;
+    }
+
+    public function __toString(): string
+    {
+        return $this->value;
+    }
+}
+```
+
+**Value Object の重要ポイント**
+- ✅ 不変（Immutable）：一度作成したら変更できない
+- ✅ バリデーションをコンストラクタで実行
+- ✅ 値による等価性判定（`equals` メソッド）
+- ✅ ビジネスルール（280文字制限）がドメイン層に表現されている
+
+### Entity の実装例
+
+```php
+// app/Domain/Tweet/Entities/Tweet.php
+namespace App\Domain\Tweet\Entities;
+
+use App\Domain\Tweet\ValueObjects\TweetBody;
+use App\Domain\Tweet\ValueObjects\TweetId;
+use App\Domain\Shared\ValueObjects\UserId;
+use App\Domain\Tweet\Events\TweetPosted;
+use DateTimeImmutable;
+
+class Tweet
+{
+    private TweetId $id;
+    private TweetBody $body;
+    private UserId $authorId;
+    private DateTimeImmutable $postedAt;
+    private array $domainEvents = [];
+
+    private function __construct(
+        TweetId $id,
+        TweetBody $body,
+        UserId $authorId,
+        DateTimeImmutable $postedAt
+    ) {
+        $this->id = $id;
+        $this->body = $body;
+        $this->authorId = $authorId;
+        $this->postedAt = $postedAt;
+    }
+
+    public static function post(
+        TweetId $id,
+        TweetBody $body,
+        UserId $authorId
+    ): self {
+        $tweet = new self(
+            $id,
+            $body,
+            $authorId,
+            new DateTimeImmutable()
+        );
+
+        // ドメインイベントを記録
+        $tweet->recordEvent(new TweetPosted($id, $authorId, $body));
+
+        return $tweet;
+    }
+
+    public function id(): TweetId
+    {
+        return $this->id;
+    }
+
+    public function body(): TweetBody
+    {
+        return $this->body;
+    }
+
+    public function authorId(): UserId
+    {
+        return $this->authorId;
+    }
+
+    public function isPostedBy(UserId $userId): bool
+    {
+        return $this->authorId->equals($userId);
+    }
+
+    private function recordEvent(object $event): void
+    {
+        $this->domainEvents[] = $event;
+    }
+
+    public function releaseEvents(): array
+    {
+        $events = $this->domainEvents;
+        $this->domainEvents = [];
+        return $events;
+    }
+}
+```
+
+**Entity の重要ポイント**
+- ✅ 識別子（TweetId）を持つ
+- ✅ ビジネスルールを表現（`isPostedBy` など）
+- ✅ ドメインイベントを記録
+- ✅ Value Object を組み合わせて構成
+
+### Repository Interface の定義
+
+```php
+// app/Domain/Tweet/Repositories/TweetRepositoryInterface.php
+namespace App\Domain\Tweet\Repositories;
+
+use App\Domain\Tweet\Entities\Tweet;
+use App\Domain\Tweet\ValueObjects\TweetId;
+use App\Domain\Shared\ValueObjects\UserId;
+
+interface TweetRepositoryInterface
+{
+    public function save(Tweet $tweet): void;
+
+    public function findById(TweetId $id): ?Tweet;
+
+    public function findByAuthor(UserId $authorId, int $limit = 20): array;
+
+    public function delete(TweetId $id): void;
+}
+```
+
+**Repository Interface のポイント**
+- ✅ Domain 層に配置（インターフェースのみ）
+- ✅ コレクションライクなメソッド
+- ✅ Domain Entity を返す
+
+### Repository 実装（Infrastructure Layer）
+
+```php
+// app/Infrastructure/Repositories/EloquentTweetRepository.php
+namespace App\Infrastructure\Repositories;
+
+use App\Domain\Tweet\Entities\Tweet;
+use App\Domain\Tweet\Repositories\TweetRepositoryInterface;
+use App\Domain\Tweet\ValueObjects\{TweetId, TweetBody};
+use App\Domain\Shared\ValueObjects\UserId;
+use App\Infrastructure\Eloquent\TweetModel;
+
+class EloquentTweetRepository implements TweetRepositoryInterface
+{
+    public function save(Tweet $tweet): void
+    {
+        TweetModel::updateOrCreate(
+            ['id' => $tweet->id()->value()],
+            [
+                'body' => $tweet->body()->value(),
+                'user_id' => $tweet->authorId()->value(),
+                'posted_at' => $tweet->postedAt(),
+            ]
+        );
+
+        // ドメインイベントをディスパッチ
+        foreach ($tweet->releaseEvents() as $event) {
+            event($event);
+        }
+    }
+
+    public function findById(TweetId $id): ?Tweet
+    {
+        $model = TweetModel::find($id->value());
+
+        if (!$model) {
+            return null;
+        }
+
+        return $this->toDomainEntity($model);
+    }
+
+    public function findByAuthor(UserId $authorId, int $limit = 20): array
+    {
+        $models = TweetModel::where('user_id', $authorId->value())
+            ->orderBy('posted_at', 'desc')
+            ->limit($limit)
+            ->get();
+
+        return $models->map(fn($model) => $this->toDomainEntity($model))->all();
+    }
+
+    public function delete(TweetId $id): void
+    {
+        TweetModel::where('id', $id->value())->delete();
+    }
+
+    private function toDomainEntity(TweetModel $model): Tweet
+    {
+        // Eloquent Model から Domain Entity へ変換
+        return Tweet::reconstruct(
+            TweetId::fromString($model->id),
+            TweetBody::create($model->body),
+            UserId::fromInt($model->user_id),
+            $model->posted_at
+        );
+    }
+}
+```
+
+### UseCase（Application Service）の実装
+
+```php
+// app/Application/UseCases/Tweet/CreateTweetUseCase.php
+namespace App\Application\UseCases\Tweet;
+
+use App\Application\DTOs\CreateTweetData;
+use App\Domain\Tweet\Entities\Tweet;
+use App\Domain\Tweet\Repositories\TweetRepositoryInterface;
+use App\Domain\Tweet\ValueObjects\{TweetId, TweetBody};
+use App\Domain\Shared\ValueObjects\UserId;
+use Illuminate\Support\Str;
+
+class CreateTweetUseCase
+{
+    public function __construct(
+        private TweetRepositoryInterface $tweetRepository
+    ) {}
+
+    public function execute(CreateTweetData $data): Tweet
+    {
+        // ドメインオブジェクトの生成
+        $tweet = Tweet::post(
+            TweetId::fromString(Str::uuid()->toString()),
+            TweetBody::create($data->body),
+            UserId::fromInt($data->userId)
+        );
+
+        // 永続化
+        $this->tweetRepository->save($tweet);
+
+        return $tweet;
+    }
+}
+```
+
+**UseCase のポイント**
+- ✅ アプリケーション層のロジックを集約
+- ✅ ドメインオブジェクトを組み立てる
+- ✅ トランザクション境界を定義
+- ✅ フレームワークの詳細から分離
+
+### Controller での使用例（Presentation Layer）
+
+```php
+// app/Http/Controllers/TweetController.php
+namespace App\Http\Controllers;
+
+use App\Application\UseCases\Tweet\CreateTweetUseCase;
+use App\Application\DTOs\CreateTweetData;
+use App\Http\Requests\StoreTweetRequest;
+use App\Http\Resources\TweetResource;
+
+class TweetController extends Controller
+{
+    public function store(
+        StoreTweetRequest $request,
+        CreateTweetUseCase $useCase
+    ) {
+        $data = new CreateTweetData(
+            body: $request->input('body'),
+            userId: $request->user()->id
+        );
+
+        $tweet = $useCase->execute($data);
+
+        return new TweetResource($tweet);
+    }
+}
+```
+
+**Controller のポイント**
+- ✅ 非常に薄い（ビジネスロジックなし）
+- ✅ リクエストの検証（FormRequest）
+- ✅ UseCase の呼び出し
+- ✅ レスポンスの整形（Resource）
+
+### DDD でのテストの書き方
+
+```php
+// tests/Unit/Domain/Tweet/ValueObjects/TweetBodyTest.php
+namespace Tests\Unit\Domain\Tweet\ValueObjects;
+
+use App\Domain\Tweet\ValueObjects\TweetBody;
+use App\Domain\Shared\Exceptions\ValidationException;
+
+it('正常なツイート本文を作成できる', function () {
+    $body = TweetBody::create('これはテストツイートです');
+
+    expect($body->value())->toBe('これはテストツイートです');
+});
+
+it('空のツイート本文は作成できない', function () {
+    TweetBody::create('');
+})->throws(ValidationException::class, 'ツイート本文は空にできません');
+
+it('280文字を超えるツイート本文は作成できない', function () {
+    TweetBody::create(str_repeat('あ', 281));
+})->throws(ValidationException::class);
+
+it('同じ値を持つTweetBodyは等価である', function () {
+    $body1 = TweetBody::create('test');
+    $body2 = TweetBody::create('test');
+
+    expect($body1->equals($body2))->toBeTrue();
+});
+```
+
+```php
+// tests/Unit/Domain/Tweet/Entities/TweetTest.php
+namespace Tests\Unit\Domain\Tweet\Entities;
+
+use App\Domain\Tweet\Entities\Tweet;
+use App\Domain\Tweet\ValueObjects\{TweetId, TweetBody};
+use App\Domain\Shared\ValueObjects\UserId;
+use App\Domain\Tweet\Events\TweetPosted;
+
+it('ツイートを投稿できる', function () {
+    $tweetId = TweetId::fromString('test-id');
+    $body = TweetBody::create('Hello, World!');
+    $authorId = UserId::fromInt(1);
+
+    $tweet = Tweet::post($tweetId, $body, $authorId);
+
+    expect($tweet->id())->toBe($tweetId);
+    expect($tweet->body())->toBe($body);
+    expect($tweet->authorId())->toBe($authorId);
+});
+
+it('ツイート投稿時にドメインイベントが記録される', function () {
+    $tweet = Tweet::post(
+        TweetId::fromString('test-id'),
+        TweetBody::create('Hello'),
+        UserId::fromInt(1)
+    );
+
+    $events = $tweet->releaseEvents();
+
+    expect($events)->toHaveCount(1);
+    expect($events[0])->toBeInstanceOf(TweetPosted::class);
+});
+
+it('投稿者を判定できる', function () {
+    $authorId = UserId::fromInt(1);
+    $tweet = Tweet::post(
+        TweetId::fromString('test-id'),
+        TweetBody::create('Hello'),
+        $authorId
+    );
+
+    expect($tweet->isPostedBy($authorId))->toBeTrue();
+    expect($tweet->isPostedBy(UserId::fromInt(2)))->toBeFalse();
+});
+```
+
+**DDD でのテストのポイント**
+- ✅ Domain 層はDB不要でテスト可能
+- ✅ ビジネスルールに焦点を当てる
+- ✅ 高速に実行できる
+- ✅ フレームワークに依存しない
+
+### TDD + DDD の開発フロー
+
+```
+1. ドメインモデリング
+   ↓ （ユビキタス言語で概念を整理）
+2. Value Object のテスト（Red）
+   ↓
+3. Value Object の実装（Green）
+   ↓
+4. Entity のテスト（Red）
+   ↓
+5. Entity の実装（Green）
+   ↓
+6. UseCase のテスト（Red）
+   ↓
+7. UseCase の実装（Green）
+   ↓
+8. Repository の実装（Infrastructure）
+   ↓
+9. Controller の実装（Presentation）
+   ↓
+10. API フィーチャーテスト
+```
+
+**ポイント**
+- ドメイン層から外側へ向かって実装
+- 各層で TDD サイクルを回す
+- ドメインロジックは DB なしでテスト
 
 ---
 
@@ -701,6 +1332,24 @@ foreach ($users as $user) {
 - [Test Driven Development: By Example - Kent Beck](https://www.amazon.com/dp/0321146530)
 - [Growing Object-Oriented Software, Guided by Tests](https://www.amazon.com/dp/0321503627)
 
+### DDD（ドメイン駆動設計）
+- **必読書籍**
+  - [エリック・エヴァンスのドメイン駆動設計](https://www.amazon.co.jp/dp/4798121967) - DDD のバイブル
+  - [実践ドメイン駆動設計](https://www.amazon.co.jp/dp/479813161X) - Vaughn Vernon 著、実践的な解説
+  - [ドメイン駆動設計 モデリング/実装ガイド](https://booth.pm/ja/items/1835632) - 日本語で読みやすい入門書
+
+- **オンラインリソース**
+  - [Domain-Driven Design Reference](https://www.domainlanguage.com/ddd/reference/) - Eric Evans による公式リファレンス
+  - [PHP/Laravel で DDD を実践する](https://qiita.com/tags/ddd) - Qiita の DDD タグ
+
+- **重要な概念**
+  - ユビキタス言語（Ubiquitous Language）
+  - 境界づけられたコンテキスト（Bounded Context）
+  - エンティティ vs 値オブジェクト
+  - 集約（Aggregate）とその境界
+  - リポジトリパターン
+  - ドメインイベント
+
 ---
 
 ## 🎯 開発の進め方（まとめ）
@@ -765,4 +1414,14 @@ foreach ($users as $user) {
 ---
 
 **最終更新日**: 2025-11-16
-**バージョン**: 1.0.0
+**バージョン**: 2.0.0
+
+**変更履歴**:
+- v2.0.0 (2025-11-16): DDD（ドメイン駆動設計）の内容を追加
+  - DDDの本質と核心的な価値を解説
+  - TDD + DDD の相乗効果を説明
+  - DDD対応のディレクトリ構成を提示
+  - Value Object, Entity, Repository などの具体的な実装例を追加
+  - レイヤードアーキテクチャの詳細を記載
+  - DDD参考リソースを追加
+- v1.0.0 (2025-11-16): 初版リリース
