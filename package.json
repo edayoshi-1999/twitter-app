@@ -1,0 +1,25 @@
+{
+  "name": "twitter-app",
+  "version": "1.0.0",
+  "private": true,
+  "description": "Twitter clone application with TDD and DDD",
+  "scripts": {
+    "prepare": "husky",
+    "lint": "npm run lint --prefix frontend && composer lint --working-dir=backend",
+    "lint:fix": "npm run lint:fix --prefix frontend && composer lint:fix --working-dir=backend",
+    "test": "npm test --prefix frontend && composer test --working-dir=backend",
+    "format": "npm run format:fix --prefix frontend"
+  },
+  "devDependencies": {
+    "husky": "^9.1.7",
+    "lint-staged": "^15.2.11"
+  },
+  "lint-staged": {
+    "frontend/**/*.{js,jsx,ts,tsx}": [
+      "npm run check:fix --prefix frontend"
+    ],
+    "backend/**/*.php": [
+      "composer lint:fix --working-dir=backend"
+    ]
+  }
+}
