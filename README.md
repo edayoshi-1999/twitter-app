@@ -168,7 +168,7 @@ twitter-app/
 │   ├── tasks/                # タスクドキュメント
 │   └── templates/            # PRテンプレート等
 ├── docker-compose.yml        # Docker Compose 設定
-├── Makefile                  # 開発タスクの便利コマンド集（73個のコマンド）
+├── Makefile                  # 開発タスクの便利コマンド集（68個のコマンド）
 ├── README.md                 # プロジェクト概要（このファイル）
 ├── DOCS_INDEX.md             # ドキュメント索引
 └── CLAUDE.md                 # AI向け開発ガイドライン
