@@ -25,7 +25,7 @@ it('認証済みユーザーはツイートを投稿できる', function () {
 
     // 201（Created）が返ることを確認
     $response->assertStatus(201)
-        ->assertJsonStructure(['id', 'body', 'user', 'created_at']);
+        ->assertJsonStructure(['id', 'body', 'user', 'created_at', 'posted_at']);
 
     // データベースに保存されたことを確認
     $this->assertDatabaseHas('tweets', [

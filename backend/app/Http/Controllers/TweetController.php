@@ -17,6 +17,7 @@ class TweetController extends Controller
         $tweet = Tweet::create([
             'body' => $request->input('body'),
             'user_id' => $request->user()->id,
+            'posted_at' => now(),
         ]);
 
         // 2. ツイートをリロード（リレーションを取得するため）
@@ -31,6 +32,7 @@ class TweetController extends Controller
                 'name' => $tweet->user->name,
             ],
             'created_at' => $tweet->created_at->toIso8601String(),
+            'posted_at' => $tweet->posted_at->toIso8601String(),
         ], 201);
     }
 }
