@@ -15,7 +15,7 @@ help: ## Display this help screen
 .PHONY: build up stop down down-v restart destroy ps logs logs-laravel logs-react logs-nginx logs-db
 
 build: ## Build Docker containers
-	docker compose build
+	docker compose build --parallel
 
 up: ## Start Docker containers
 	docker compose up -d
@@ -82,14 +82,21 @@ psql: ## Access PostgreSQL CLI
 # プロジェクトセットアップ
 # ========================================
 
-.PHONY: install backend-install frontend-install
+.PHONY: install init backend-install frontend-install
 
 install: ## Install and setup the project
 	@make build
 	@make up
-	@echo "⏳ Waiting for database to be ready..."
-	@until docker compose exec -T db pg_isready -U laravel_user -d twitter_clone > /dev/null 2>&1; do \
+	@echo "⏳ Waiting for database to be ready (max 60s)..."
+	@count=0; \
+	until docker compose exec -T db pg_isready -U laravel_user -d twitter_clone > /dev/null 2>&1; do \
 		sleep 1; \
+		count=$$((count + 1)); \
+		if [ $$count -ge 60 ]; then \
+			echo "❌ Database failed to start within 60 seconds"; \
+			echo "   Check logs: make logs-db"; \
+			exit 1; \
+		fi; \
 	done
 	@echo "✅ Database is ready!"
 	@make backend-install
@@ -108,19 +115,23 @@ install: ## Install and setup the project
 	@echo "  make react        # Enter React container"
 	@echo ""
 
+init: install ## Alias for install
+
 backend-install: ## Install Laravel dependencies and setup
-	docker compose exec laravel composer install
-	@if [ ! -f backend/.env ]; then \
-		docker compose exec laravel cp .env.example .env; \
-		echo "✅ Created .env file"; \
-	fi
-	docker compose exec laravel php artisan key:generate
-	docker compose exec laravel php artisan storage:link
-	docker compose exec laravel chmod -R 777 storage bootstrap/cache
+	docker compose exec laravel composer install --prefer-dist --no-interaction
+	@docker compose exec laravel test -f .env > /dev/null 2>&1 || \
+		(docker compose exec laravel cp .env.example .env && echo "✅ Created .env file")
+	@docker compose exec laravel grep -q "APP_KEY=base64:" .env 2>/dev/null || \
+		(docker compose exec laravel php artisan key:generate && echo "✅ Generated APP_KEY")
+	@docker compose exec laravel test -L public/storage > /dev/null 2>&1 || \
+		(docker compose exec laravel php artisan storage:link && echo "✅ Created storage link")
+	@echo "🔒 Setting permissions (775 for security)..."
+	@docker compose exec laravel chmod -R 775 storage bootstrap/cache
+	@docker compose exec laravel chown -R www-data:www-data storage bootstrap/cache 2>/dev/null || true
 	@make migrate
 
 frontend-install: ## Install React dependencies
-	docker compose exec react npm install
+	docker compose exec react npm ci
 
 # ========================================
 # Laravel コマンド
@@ -197,6 +208,8 @@ pint-test: ## Test Laravel Pint code formatter
 	docker compose exec laravel vendor/bin/pint -v --test
 
 laravel-log: ## View Laravel logs
+	@docker compose exec laravel test -f storage/logs/laravel.log || \
+		docker compose exec laravel touch storage/logs/laravel.log
 	docker compose exec laravel tail -f storage/logs/laravel.log
 
 queue-work: ## Run Laravel queue worker
@@ -252,34 +265,57 @@ frontend-check-fix: ## Run Biome check and fix
 # コード品質チェック（全体）
 # ========================================
 
-.PHONY: lint lint-fix test-all
+.PHONY: lint lint-fix test-all ci
 
 lint: ## Run all linters (backend + frontend)
 	@echo "🔍 Running backend linter..."
-	@make pint-test || (echo "❌ Backend linting failed" && exit 1)
+	@if ! make pint-test; then \
+		echo "❌ Backend linting failed"; \
+		exit 1; \
+	fi
 	@echo ""
 	@echo "🔍 Running frontend linter..."
-	@make frontend-lint || (echo "❌ Frontend linting failed" && exit 1)
+	@if ! make frontend-lint; then \
+		echo "❌ Frontend linting failed"; \
+		exit 1; \
+	fi
 	@echo ""
 	@echo "✅ All linting passed!"
 
 lint-fix: ## Fix all linting issues (backend + frontend)
 	@echo "🔧 Fixing backend code..."
-	@make pint
+	@if ! make pint; then \
+		echo "⚠️  Backend formatting encountered issues"; \
+	fi
 	@echo ""
 	@echo "🔧 Fixing frontend code..."
-	@make frontend-check-fix
+	@if ! make frontend-check-fix; then \
+		echo "⚠️  Frontend formatting encountered issues"; \
+	fi
 	@echo ""
-	@echo "✅ All code formatted!"
+	@echo "✅ Code formatting complete!"
 
 test-all: ## Run all tests (backend + frontend)
 	@echo "🧪 Running backend tests..."
-	@make test-pest || (echo "❌ Backend tests failed" && exit 1)
+	@if ! make test-pest; then \
+		echo "❌ Backend tests failed"; \
+		exit 1; \
+	fi
 	@echo ""
 	@echo "🧪 Running frontend tests..."
-	@make frontend-test || (echo "❌ Frontend tests failed" && exit 1)
+	@if ! make frontend-test; then \
+		echo "❌ Frontend tests failed"; \
+		exit 1; \
+	fi
 	@echo ""
 	@echo "✅ All tests passed!"
+
+ci: ## Run CI pipeline (lint + test)
+	@echo "🚀 Running CI pipeline..."
+	@make lint
+	@make test-all
+	@echo ""
+	@echo "✅ CI pipeline passed!"
 
 # ========================================
 # 開発便利コマンド
@@ -315,7 +351,7 @@ status: ## Show project status
 
 clean: ## Clean up cache and temporary files
 	@echo "🧹 Cleaning Laravel cache..."
-	@make cache-clear
+	@make cache-clear 2>/dev/null || true
 	@echo ""
 	@echo "🧹 Cleaning compiled files..."
 	@docker compose exec laravel php artisan clear-compiled 2>/dev/null || true
@@ -323,9 +359,14 @@ clean: ## Clean up cache and temporary files
 	@echo "✅ Cleanup complete!"
 
 remake: ## Destroy and reinstall the project
-	@echo "⚠️  This will destroy all containers and volumes!"
-	@echo "Press Ctrl+C to cancel, or wait 5 seconds to continue..."
-	@sleep 5
+	@echo "⚠️  WARNING: This will destroy all containers and volumes!"
+	@echo "⚠️  All data will be lost!"
+	@echo ""
+	@read -p "Type 'yes' to continue: " confirm; \
+	if [ "$$confirm" != "yes" ]; then \
+		echo "❌ Aborted"; \
+		exit 1; \
+	fi
 	@make destroy
 	@make install
 
@@ -333,22 +374,40 @@ remake: ## Destroy and reinstall the project
 # データベース操作
 # ========================================
 
-.PHONY: db-reset db-dump db-restore
+.PHONY: db-reset db-dump db-restore db-backup
 
 db-reset: ## Reset database (fresh + seed)
 	@make fresh
 
 db-dump: ## Dump database to file
 	@mkdir -p backups
-	docker compose exec -T db pg_dump -U laravel_user twitter_clone > backups/backup_$$(date +%Y%m%d_%H%M%S).sql
-	@echo "✅ Database dumped to backups/"
+	@timestamp=$$(date +%Y%m%d_%H%M%S); \
+	docker compose exec -T db pg_dump -U laravel_user twitter_clone > backups/backup_$$timestamp.sql && \
+	echo "✅ Database dumped to backups/backup_$$timestamp.sql"
+
+db-backup: db-dump ## Alias for db-dump
 
 db-restore: ## Restore database from file (usage: make db-restore FILE=backup.sql)
 ifndef FILE
 	@echo "❌ Error: FILE parameter is required"
-	@echo "Usage: make db-restore FILE=backups/backup_YYYYMMDD_HHMMSS.sql"
+	@echo ""
+	@echo "Usage:"
+	@echo "  make db-restore FILE=backups/backup_YYYYMMDD_HHMMSS.sql"
+	@echo ""
+	@echo "Available backups:"
+	@ls -1 backups/*.sql 2>/dev/null | tail -5 || echo "  No backups found"
 	@exit 1
 endif
+	@if [ ! -f "$(FILE)" ]; then \
+		echo "❌ Error: File '$(FILE)' not found"; \
+		exit 1; \
+	fi
+	@echo "⚠️  This will overwrite the current database!"
+	@read -p "Type 'yes' to continue: " confirm; \
+	if [ "$$confirm" != "yes" ]; then \
+		echo "❌ Aborted"; \
+		exit 1; \
+	fi
 	docker compose exec -T db psql -U laravel_user -d twitter_clone < $(FILE)
 	@echo "✅ Database restored from $(FILE)"
 
@@ -359,6 +418,11 @@ endif
 .PHONY: ide-helper
 
 ide-helper: ## Generate IDE helper files for Laravel
+	@if ! docker compose exec laravel composer show | grep -q "barryvdh/laravel-ide-helper"; then \
+		echo "⚠️  laravel-ide-helper is not installed"; \
+		echo "   Install it with: docker compose exec laravel composer require --dev barryvdh/laravel-ide-helper"; \
+		exit 1; \
+	fi
 	docker compose exec laravel php artisan clear-compiled
 	docker compose exec laravel php artisan ide-helper:generate
 	docker compose exec laravel php artisan ide-helper:meta

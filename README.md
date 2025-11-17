@@ -46,13 +46,21 @@ cd twitter-app
 
 # 2. プロジェクトのセットアップ（全自動）
 make install
+# または
+make init  # installのエイリアス
 ```
 
 これだけで以下がすべて完了します：
-- Dockerコンテナのビルドと起動
+- Dockerコンテナのビルドと起動（並列ビルドで高速化）
 - Laravel の依存関係インストールと初期設定
 - React の依存関係インストール
 - データベースマイグレーション実行
+- セキュアな権限設定（chmod 775）
+
+**セキュリティ対策**:
+- ファイル権限は `775`（`777` ではない）
+- DBヘルスチェック付き起動（最大60秒タイムアウト）
+- `.env` ファイルと `APP_KEY` の重複作成を防止
 
 ### アプリケーションへのアクセス
 
@@ -131,6 +139,7 @@ make frontend-build     # プロダクションビルド
 make lint               # 全リンター実行（Laravel + React）
 make lint-fix           # 全リント問題を自動修正
 make test-all           # 全テスト実行
+make ci                 # CI/CDパイプライン実行（lint + test）
 ```
 
 ### データベース操作
@@ -138,16 +147,28 @@ make test-all           # 全テスト実行
 ```bash
 make psql               # PostgreSQL CLIに入る
 make db-reset           # DBリセット
-make db-dump            # DBバックアップ
+make db-dump            # DBバックアップ（backups/ディレクトリに保存）
+make db-backup          # db-dumpのエイリアス
+make db-restore FILE=backup.sql  # DBリストア（確認プロンプト付き）
 ```
 
 ### トラブルシューティング
 
 ```bash
 make clean              # キャッシュクリア
-make remake             # プロジェクト完全再構築
+make remake             # プロジェクト完全再構築（確認プロンプト付き）
 make down-v             # コンテナ＋ボリューム削除
 ```
+
+### 🔒 セキュリティ機能
+
+Makefileには以下のセキュリティ対策が組み込まれています：
+
+- **安全な権限設定**: `chmod 775`（`chmod 777` は使用しない）
+- **確認プロンプト**: 危険な操作（`make remake`, `make db-restore`）には明示的な確認が必要
+- **タイムアウト**: DBヘルスチェックに60秒のタイムアウトを設定
+- **冪等性**: `.env`, `APP_KEY`, `storage:link` の重複作成を防止
+- **依存チェック**: `ide-helper` など、必要なパッケージの存在確認
 
 ## 📂 プロジェクト構成
 
@@ -168,7 +189,7 @@ twitter-app/
 │   ├── tasks/                # タスクドキュメント
 │   └── templates/            # PRテンプレート等
 ├── docker-compose.yml        # Docker Compose 設定
-├── Makefile                  # 開発タスクの便利コマンド集（68個のコマンド）
+├── Makefile                  # 開発タスクの便利コマンド集（71個のコマンド、セキュリティ強化版）
 ├── README.md                 # プロジェクト概要（このファイル）
 ├── DOCS_INDEX.md             # ドキュメント索引
 └── CLAUDE.md                 # AI向け開発ガイドライン
