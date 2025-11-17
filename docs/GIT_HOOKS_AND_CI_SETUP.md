@@ -95,13 +95,11 @@ git commit -m "message" --no-verify
 **実行内容**:
 1. Node.js 20.x のセットアップ
 2. 依存関係のインストール（`npm ci`）
-3. Biome lint（`npm run lint`）
-4. Biome format check（`npm run format`）
-5. Biome 総合チェック（`npm run check`）
-6. TypeScript型チェック（`tsc --noEmit`）
-7. テスト実行（`npm test -- --run`）
-8. ビルド（`npm run build`）
-9. ビルド成果物のアップロード（7日間保持）
+3. Biome チェック（`npm run check` - lint + format を同時チェック）
+4. TypeScript型チェック（`tsc --noEmit`）
+5. テスト実行（`npm test -- --run`）
+6. ビルド（`npm run build`）
+7. ビルド成果物のアップロード（7日間保持）
 
 #### バックエンドCI（`.github/workflows/backend-ci.yml`）
 
@@ -129,17 +127,15 @@ git commit -m "message" --no-verify
 # フロントエンド
 cd frontend
 npm ci
-npm run lint
-npm run format
-npm run check
-npx tsc --noEmit
-npm test -- --run
-npm run build
+npm run check       # Biome による lint + format チェック
+npx tsc --noEmit    # TypeScript 型チェック
+npm test -- --run   # テスト実行
+npm run build       # ビルド
 
 # バックエンド
 cd backend
 composer install
-composer lint
+composer lint       # Laravel Pint チェック
 php artisan migrate
 composer test
 composer test:coverage
@@ -323,4 +319,30 @@ composer install
 
 ---
 
-**最終更新日**: 2025-11-16
+## 📝 変更履歴
+
+### v1.1.0 (2025-11-17)
+- **リファクタリング**: Husky/lint-staged の重複を解消
+  - frontend/package.json から husky, lint-staged を削除（ルートに集約）
+  - frontend/.husky/ ディレクトリを削除
+  - frontend の prepare スクリプトを削除
+- **GitHub Actions の最適化**
+  - フロントエンドCI: 重複ステップを削除（Biome check で lint + format を同時チェック）
+  - CI実行時間の短縮
+- **.gitignore の修正**
+  - package-lock.json をコミット対象に変更（依存関係のバージョン固定）
+- **Husky 設定の改善**
+  - Husky 9.x の新しい推奨形式に準拠
+  - シンプルな pre-commit フック（deprecation 警告を解消）
+
+### v1.0.0 (2025-11-16)
+- 初版リリース
+- Git Hooks（Husky + lint-staged）のセットアップ
+- GitHub Actions CI/CD のセットアップ
+  - フロントエンドCI（Node.js 20.x, Biome, Vitest）
+  - バックエンドCI（PHP 8.2/8.3, Laravel Pint, Pest）
+
+---
+
+**最終更新日**: 2025-11-17
+**バージョン**: v1.1.0
