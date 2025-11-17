@@ -4,8 +4,10 @@
 
 ## 📚 ドキュメント
 
+- **[DOCS_INDEX.md](./DOCS_INDEX.md)** - プロジェクト全体のドキュメント索引（全ドキュメントへのリンク集）
 - **[CLAUDE.md](./CLAUDE.md)** - AI アシスタント向け開発ガイドライン（プロジェクト全体の設計思想）
-- **[タスク1.md](./タスク1.md)** - Docker Compose 環境構築の設計書
+
+その他の詳細なドキュメントは [DOCS_INDEX.md](./DOCS_INDEX.md) を参照してください。
 
 ## 🛠️ 技術スタック
 
@@ -56,8 +58,8 @@ docker-compose up -d
 
 ```
 twitter-app/
-├── backend/                  # Laravel プロジェクト（後続タスクで作成）
-├── frontend/                 # React プロジェクト（後続タスクで作成）
+├── backend/                  # Laravel プロジェクト
+├── frontend/                 # React プロジェクト
 ├── docker/                   # Docker 設定ファイル
 │   ├── nginx/
 │   │   └── default.conf     # Nginx リバースプロキシ設定
@@ -65,9 +67,15 @@ twitter-app/
 │   │   └── Dockerfile       # Laravel用 Dockerfile
 │   └── react/
 │       └── Dockerfile       # React用 Dockerfile
+├── docs/                     # ドキュメント
+│   ├── architecture/         # アーキテクチャ設計書
+│   ├── guides/               # 開発ガイド・手順書
+│   ├── tasks/                # タスクドキュメント
+│   └── templates/            # PRテンプレート等
 ├── docker-compose.yml        # Docker Compose 設定
-├── CLAUDE.md                 # 開発ガイドライン
-└── タスク1.md                # Docker環境構築の設計書
+├── README.md                 # プロジェクト概要（このファイル）
+├── DOCS_INDEX.md             # ドキュメント索引
+└── CLAUDE.md                 # AI向け開発ガイドライン
 ```
 
 ## 🎯 開発原則
@@ -97,7 +105,10 @@ Docker環境が起動したら、以下の順序で開発を進めます：
 3. **タスク4**: React プロジェクトのセットアップ
 4. **タスク5**: 最初のTDDサイクル（ツイート投稿機能）
 
-詳細は [CLAUDE.md](./CLAUDE.md) を参照してください。
+詳細は以下を参照してください：
+- [CLAUDE.md](./CLAUDE.md) - 開発の全体像と方針
+- [DOCS_INDEX.md](./DOCS_INDEX.md) - 全ドキュメントへのリンク
+- [開発再開時に読む.md](./docs/guides/開発再開時に読む.md) - 開発再開ガイド
 
 ## 🤝 貢献
 
