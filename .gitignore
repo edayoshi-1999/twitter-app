@@ -32,6 +32,3 @@ yarn-error.log*
 .cache/
 .npm/
 .eslintcache
-
-# Package lock files (keep them in subdirectories)
-package-lock.json
