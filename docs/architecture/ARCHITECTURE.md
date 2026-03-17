@@ -333,33 +333,43 @@ backend/
 ```
 frontend/
 ├── src/
-│   ├── components/                 # Reactコンポーネント
-│   │   ├── common/                 # 共通コンポーネント
-│   │   │   ├── Button.tsx
-│   │   │   └── Input.tsx
-│   │   ├── tweets/                 # ツイート関連
-│   │   │   ├── TweetForm.tsx
-│   │   │   ├── TweetList.tsx
-│   │   │   └── TweetCard.tsx
-│   │   └── auth/                   # 認証関連
-│   │       ├── LoginForm.tsx
-│   │       └── RegisterForm.tsx
+│   ├── features/                   # 機能単位のモジュール
+│   │   ├── auth/                   # 認証機能
+│   │   │   ├── components/
+│   │   │   │   ├── LoginForm.tsx
+│   │   │   │   └── RegisterForm.tsx
+│   │   │   ├── hooks/
+│   │   │   │   └── useAuth.ts
+│   │   │   ├── services/
+│   │   │   │   └── authService.ts
+│   │   │   ├── types/
+│   │   │   │   └── User.ts
+│   │   │   └── index.ts
+│   │   ├── tweet/                  # ツイート投稿・表示
+│   │   │   ├── components/
+│   │   │   │   ├── TweetForm.tsx
+│   │   │   │   ├── TweetList.tsx
+│   │   │   │   └── TweetCard.tsx
+│   │   │   ├── hooks/
+│   │   │   │   └── useTweets.ts
+│   │   │   ├── services/
+│   │   │   │   └── tweetService.ts
+│   │   │   ├── types/
+│   │   │   │   └── Tweet.ts
+│   │   │   └── index.ts
+│   │   ├── timeline/               # タイムライン機能
+│   │   └── profile/                # プロフィール機能
 │   │
-│   ├── hooks/                      # カスタムフック
-│   │   ├── useTweets.ts           # ツイート取得・投稿
-│   │   └── useAuth.ts             # 認証状態管理
-│   │
-│   ├── services/                   # API通信
-│   │   ├── api.ts                 # Axiosインスタンス設定
-│   │   ├── tweetService.ts        # ツイートAPI
-│   │   └── authService.ts         # 認証API
-│   │
-│   ├── types/                      # TypeScript型定義
-│   │   ├── Tweet.ts
-│   │   └── User.ts
+│   ├── components/                 # featureに属さない共通UI
+│   │   └── common/
+│   │       ├── Button.tsx
+│   │       └── Input.tsx
 │   │
 │   ├── contexts/                   # React Context
 │   │   └── AuthContext.tsx        # 認証コンテキスト
+│   │
+│   ├── lib/                        # 横断的な基盤コード
+│   │   └── api.ts                 # Axiosインスタンス設定
 │   │
 │   ├── utils/                      # ユーティリティ関数
 │   │   └── dateFormatter.ts
@@ -373,8 +383,8 @@ frontend/
 │   └── main.tsx                    # エントリーポイント
 │
 ├── tests/                          # テスト
-│   ├── components/
-│   └── hooks/
+│   ├── features/
+│   └── components/
 │
 └── vite.config.ts                  # Vite設定
 ```
@@ -383,11 +393,12 @@ frontend/
 
 | ディレクトリ | 役割 | 例 |
 |------------|------|---|
-| `components/` | UIコンポーネント | ボタン、フォーム、カード |
-| `hooks/` | ロジックの分離 | データ取得、状態管理 |
-| `services/` | API通信 | Axios呼び出し |
-| `types/` | 型定義 | Tweet型、User型 |
-| `contexts/` | グローバル状態 | 認証状態 |
+| `features/` | 機能単位で UI・hook・API・型をまとめる | `tweet/`, `auth/` |
+| `components/common/` | feature横断で再利用する共通UI | ボタン、入力欄 |
+| `lib/` | 横断的な基盤コード | Axios設定、共通クライアント |
+| `contexts/` | アプリ全体で共有する状態 | 認証状態 |
+| `pages/` | 画面単位のエントリ | Home、Login、Profile |
+| `utils/` | 汎用ユーティリティ | 日付整形 |
 
 ---
 
@@ -844,7 +855,6 @@ erDiagram
         bigint user_id FK
         uuid tweet_id FK
         timestamp created_at
-        unique(user_id, tweet_id)
     }
 
     follows {
@@ -852,9 +862,12 @@ erDiagram
         bigint follower_id FK "フォローする人"
         bigint following_id FK "フォローされる人"
         timestamp created_at
-        unique(follower_id, following_id)
     }
 ```
+
+補足:
+- `likes` には `(user_id, tweet_id)` の複合ユニーク制約を設定します。
+- `follows` には `(follower_id, following_id)` の複合ユニーク制約を設定します。
 
 ### 9.2. テーブル設計の詳細
 
